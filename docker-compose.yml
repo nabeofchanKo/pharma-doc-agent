@@ -1,0 +1,23 @@
+services:
+  # 1. Backend (API)
+  # 1. バックエンド (API)
+  backend:
+      build: ./app/backend
+      container_name: pharmadoc-backend
+      ports:
+        - "8000:8000"
+      volumes:
+        - ./app/backend:/app
+        - ./data:/app/data 
+
+  # 2. Frontend (UI)
+  # 2. フロントエンド (UI)
+  frontend:
+    build: ./app/frontend
+    container_name: pharmadoc-frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./app/frontend:/app
+    depends_on:
+      - backend
