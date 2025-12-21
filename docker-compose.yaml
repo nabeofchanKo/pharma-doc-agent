@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: pharma-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src                  # コード同期 (Hot Reload)
+      - ./data:/app/data                # データ永続化
+      - ./models:/root/.cache/huggingface # 【重要】HFモデルのキャッシュ
+    env_file:
+      - .env
+    # backendコンテナ内でPythonがモジュールを見つけやすくする
+    environment:
+      - PYTHONPATH=/app
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    container_name: pharma-frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./src:/app/src
+    env_file:
+      - .env
+    depends_on:
+      - backend
