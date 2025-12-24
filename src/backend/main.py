@@ -1,6 +1,7 @@
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import StreamingResponse
 from src.backend.schemas import HealthResponse, UploadResponse, ChatRequest, ChatResponse
 from src.backend.services.pdf_loader import PDFLoader
 from src.backend.services.rag_service import RAGService
@@ -51,3 +52,10 @@ async def upload_file(file: UploadFile = File(...)):
 async def chat_endpoint(request: ChatRequest):
 
     return rag_service.generate_answer(request.message)
+
+@app.post("/chat/stream")
+async def chat_stream_endpoint(request: ChatRequest):
+    return StreamingResponse(
+        rag_service.a_generate_answer_stream(request.message),
+        media_type="text/event-stream"
+    )

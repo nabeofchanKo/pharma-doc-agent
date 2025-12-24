@@ -44,26 +44,21 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+# 3. Handle new user input
 if prompt := st.chat_input("Ask a question about the PDF..."):
     
+    # A. Display and store user input
     with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.spinner("AI is thinking..."):
-        response = api.chat(prompt)
-
-    if response:
-        ai_content = response.get("response", "Error: No response")
-        
-        with st.chat_message("assistant"):
-            st.markdown(ai_content)
-            
-            if response.get("context"):
-                with st.expander("Reference Context"):
-                    for doc in response["context"]:
-                        st.info(doc)
-
-        st.session_state.messages.append({"role": "assistant", "content": ai_content})
-    else:
-        st.error("Failed to get response from backend.")
+    # B. Display AI response (Streaming)
+    with st.chat_message("assistant"):
+        # st.write_stream consumes the generator and renders chunks in real-time.
+        # It returns the complete string once the stream finishes.
+        response_generator = api.chat_stream(prompt)
+        full_response = st.write_stream(response_generator)
+    
+    # C. Save the full response to history
+    # This is necessary to persist the conversation after a Streamlit rerun.
+    st.session_state.messages.append({"role": "assistant", "content": full_response})

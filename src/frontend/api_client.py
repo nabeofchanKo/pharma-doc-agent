@@ -39,3 +39,25 @@ class APIClient:
         except requests.exceptions.RequestException as e:
             print(f"Chat failed: {e}")
             return None
+        
+    def chat_stream(self, message: str):
+            """
+            Stream the chat response from the backend.
+            Yields: str (partial response chunks)
+            """
+            try:
+                with requests.post(
+                    f"{self.base_url}/chat/stream", 
+                    json={"message": message}, 
+                    stream=True,
+                    timeout=30
+                ) as response:
+                    response.raise_for_status()
+                    
+                    for chunk in response.iter_content(chunk_size=None):
+                        if chunk:
+                            yield chunk.decode('utf-8')
+                            
+            except requests.exceptions.RequestException as e:
+                print(f"Chat stream failed: {e}")
+                yield f"Error: {str(e)}"
