@@ -1,18 +1,23 @@
 import os
 import shutil
 from fastapi import FastAPI, UploadFile, File
-# Dockerのルート(/app)から見た完全なパスを指定する
-from src.backend.schemas import HealthResponse, UploadResponse
+from src.backend.schemas import HealthResponse, UploadResponse, ChatRequest, ChatResponse
+from src.backend.services.pdf_loader import PDFLoader
+from src.backend.services.rag_service import RAGService
 
 app = FastAPI(title="PharmaDoc Agent API")
+
+# Initialize RAG Service (Global instance)
+# Note: In production, use dependency injection (Depends)
+rag_service = RAGService()
 
 UPLOAD_DIR = "/app/data/input"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# response_model を指定することで、返り値の型チェックを行う
+# Specify response_model to enable return value type validation
 @app.get("/health", response_model=HealthResponse)
 def read_health():
-    # 辞書を返しても、Pydanticが自動でクラスに変換してくれる
+    # Even if a dictionary is returned, Pydantic automatically converts it into the specified model
     return {
         "status": "healthy",
         "version": "0.1.0"
@@ -20,19 +25,29 @@ def read_health():
 
 @app.post("/upload", response_model=UploadResponse)
 async def upload_file(file: UploadFile = File(...)):
-    file_location = f"{UPLOAD_DIR}/{file.filename}"
-    
-    # ファイルサイズを取得するためにポインタを末尾へ
-    file.file.seek(0, 2)
-    file_size = file.file.tell()
-    file.file.seek(0)  # ポインタを先頭に戻す
+    # 1. Read file content
+    content = await file.read()
 
-    with open(file_location, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
+    # 2. Save original file locally (Audit trail)
+    file_location = f"{UPLOAD_DIR}/{file.filename}"
+    with open(file_location, "wb") as f:
+        f.write(content)
+
+    # 3. Extract Text (Using our new PDFLoader)
+    text = PDFLoader.extract_text_from_stream(content)
+
+    # 4. Process for RAG (Chunking & Embedding)
+    # This might take a few seconds, so async is good here
+    num_chunks = rag_service.process_document(text, file.filename)
+
     return {
         "filename": file.filename,
         "saved_path": file_location,
-        "size": file_size,
-        "message": "File uploaded successfully"
+        "size": len(content),
+        "message": f"File processed successfully! Stored {num_chunks} vector chunks."
     }
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(request: ChatRequest):
+
+    return rag_service.generate_answer(request.message)

@@ -7,12 +7,12 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./src:/app/src                  # コード同期 (Hot Reload)
-      - ./data:/app/data                # データ永続化
-      - ./models:/root/.cache/huggingface # 【重要】HFモデルのキャッシュ
+      - ./src:/app/src                  # Code synchronization (hot reload)
+      - ./data:/app/data                # Data persistence
+      - ./models:/root/.cache/huggingface # IMPORTANT: Hugging Face model cache
     env_file:
       - .env
-    # backendコンテナ内でPythonがモジュールを見つけやすくする
+    # Make it easier for Python to locate modules inside the backend container
     environment:
       - PYTHONPATH=/app
 
