@@ -5,8 +5,14 @@ from fastapi.responses import StreamingResponse
 from src.backend.schemas import HealthResponse, UploadResponse, ChatRequest, ChatResponse
 from src.backend.services.pdf_loader import PDFLoader
 from src.backend.services.rag_service import RAGService
+from src.backend.db import models
+from src.backend.db.database import engine
 
 app = FastAPI(title="PharmaDoc Agent API")
+
+# 🔥 Create Database Tables (Add this line!)
+# This will create tables defined in models.py if they don't exist
+models.Base.metadata.create_all(bind=engine)
 
 # Initialize RAG Service (Global instance)
 # Note: In production, use dependency injection (Depends)

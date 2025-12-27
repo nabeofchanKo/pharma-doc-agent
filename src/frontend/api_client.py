@@ -46,6 +46,7 @@ class APIClient:
             Yields: str (partial response chunks)
             """
             try:
+                # stream=True is critical! Without this, the client waits for the full response.
                 with requests.post(
                     f"{self.base_url}/chat/stream", 
                     json={"message": message}, 
@@ -54,8 +55,10 @@ class APIClient:
                 ) as response:
                     response.raise_for_status()
                     
+                    # Loop to process each chunk as it arrives
                     for chunk in response.iter_content(chunk_size=None):
                         if chunk:
+                            # Decode bytes to string and yield
                             yield chunk.decode('utf-8')
                             
             except requests.exceptions.RequestException as e:
