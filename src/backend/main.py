@@ -7,6 +7,9 @@ from src.backend.services.pdf_loader import PDFLoader
 from src.backend.services.rag_service import RAGService
 from src.backend.db import models
 from src.backend.db.database import engine
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from sqlalchemy.orm import Session
+from src.backend.db import crud, database
 
 app = FastAPI(title="PharmaDoc Agent API")
 
@@ -60,8 +63,35 @@ async def chat_endpoint(request: ChatRequest):
     return rag_service.generate_answer(request.message)
 
 @app.post("/chat/stream")
-async def chat_stream_endpoint(request: ChatRequest):
+async def chat_stream_endpoint(
+    request: ChatRequest,
+    db: Session = Depends(database.get_db)
+):
+    session_id = "default_session" # For now, use a static session ID
+
+    # 1. Save User's Message immediately
+    crud.create_chat_message(db, session_id, "user", request.message)
+
+    # 2. Define a generator wrapper to capture the AI's full response
+    async def stream_with_logging(generator):
+        full_response = ""
+        async for chunk in generator:
+            full_response += chunk
+            yield chunk
+
+        # 3. Save AI's Full Response after streaming finishes
+        # We create a new DB session here properly handling the context
+        crud.create_chat_message(db, session_id, "assistant", full_response)
+
+    # 4. Start the stream wrapped with our logger
     return StreamingResponse(
-        rag_service.a_generate_answer_stream(request.message),
+        stream_with_logging(rag_service.a_generate_answer_stream(request.message)),
         media_type="text/event-stream"
     )
+
+@app.get("/chat/history")
+def get_history(session_id: str = "default_session", db: Session = Depends(database.get_db)):
+    """
+    Fetch chat history from the database.
+    """
+    return crud.get_chat_history(db, session_id=session_id)

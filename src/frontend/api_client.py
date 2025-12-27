@@ -64,3 +64,17 @@ class APIClient:
             except requests.exceptions.RequestException as e:
                 print(f"Chat stream failed: {e}")
                 yield f"Error: {str(e)}"
+
+    def get_history(self):
+        """
+        Fetch chat history from the backend.
+        Returns: List of dicts (role, content)
+        """
+        try:
+            # We currently use "default_session" hardcoded
+            response = requests.get(f"{self.base_url}/chat/history?session_id=default_session")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Failed to fetch history: {e}")
+            return []

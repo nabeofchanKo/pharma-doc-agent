@@ -7,6 +7,19 @@ api = APIClient()  # Instantiate the communication handler
 
 st.title("💊 PharmaDoc Agent")
 
+# 1. Initialize session state
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+    
+    # 2. Fetch history from DB only on first load
+    history = api.get_history()
+    for msg in history:
+        # DB format to Streamlit format
+        st.session_state.messages.append({
+            "role": msg["role"],
+            "content": msg["content"]
+        })
+        
 # Sidebar: system status
 with st.sidebar:
     st.header("System Status")
@@ -32,6 +45,11 @@ if uploaded_file is not None:
                 st.json(result)  # Display results neatly in JSON format
             else:
                 st.error("Upload Failed. Check backend logs.")
+
+# 3. Display chat messages
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
 # --- Chat Interface ---
 st.markdown("---")
